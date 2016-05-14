@@ -1,27 +1,3 @@
-{-
-data BST key val = 
-				Nil
-			    | Node key val (BST key val) (BST key val)
-			    deriving (Eq, Show, Ord)
-
-insert key val Nil = Node key val Nil Nil
-insert key val (Node nkey nval nleft nright)
-	| key < nkey = Node nkey nval (insert key val nleft) nright
-	| key > nkey = Node nkey nval nleft (insert key val nright)
-	| key == nkey = error "the same key"
-
-search key Nil = error "key not found"
-search key (Node k v l r)
-	| key < k = search key l
-	| key > k = search key r
-	| key == k = v
-
-testTree = insert 5 5 Nil
-a = insert 2 2 testTree
-b = insert 3 3 testTree
-c = insert 7 7 testTree
--}
-
 mini = -1 :: Integer
 data BST key = 
 	Nil
@@ -47,15 +23,6 @@ empty _ = False
 getHead Nil = error "no keys"
 getHead (Node k l r) = k
 
-{-
-isBinaryary Nil = False
-isBinaryary (Node k Nil Nil) = True
-isBinaryary (Node k l r)
-	| getK l >= k = False
-	| getK r <= k = False
-	| otherwise = True
--}
-
 data DIRECTION = NONE | LEFT | RIGHT deriving(Eq,Ord,Show)
 
 _isBinary n = isBinary NONE 0 n
@@ -67,7 +34,12 @@ isBinary dir key (Node k l r) --isBinary l && isBinary r
 
 _leavesKeys x = leavesKeys x []
 leavesKeys Nil _ = []
-leavesKeys (Node k l r) list = (leavesKeys l [])++(leavesKeys r [])++[k]++list
+leavesKeys (Node k l r) list = list++(leavesKeys l [])++(leavesKeys r [])++[k]
+--			++[(Node k l r)]
+
+_leaves x = leaves x []
+leaves Nil _ = []
+leaves (Node k l r) list = list++(leaves l [])++(leaves r [])++[(Node k l r)]
 
 _nnodes x = nnodes x 0
 nnodes Nil x = 0
@@ -76,9 +48,6 @@ nnodes (Node _ l r) x = 1+x+(nnodes l 0)+(nnodes r 0)
 _nsum x = nsum x 0
 nsum Nil x = 0
 nsum (Node k l r) x = k+x+(nsum l 0)+(nsum r 0)
-
-remove key Nil = error "no such key"
-remove key (Node k l r) = 
 
 search key Nil = False
 search key (Node k l r)
@@ -93,17 +62,50 @@ isBalanced x
 
 data PATH = VLR | VRL | LVR | RVL | RLV | LRV deriving(Show,Ord,Eq)
 
+_traverse pth x = traverse pth x []
 traverse pth Nil list = []
-traverse pth (Node k l r) list
-	| 
-	| 
-	| 
-	| 
-	| 
-	| 
+traverse pth (Node k l r) list = case pth of
+	VLR -> list++[k]++(traverse pth l [])++(traverse pth r [])
+	VRL -> list++[k]++(traverse pth r [])++(traverse pth l [])
+	LVR -> list++(traverse pth l [])++[k]++(traverse pth r [])
+	RVL -> list++(traverse pth r [])++[k]++(traverse pth l [])
+	RLV -> list++(traverse pth r [])++(traverse pth l [])++[k]
+	LRV -> list++(traverse pth l [])++(traverse pth r [])++[k]
 
 --toStrings ...
 --tmap ...
 --remove ...
 
+{-
+remove key Nil = error "no such key"
+remove key (Node k l r) = 
+-}
+
 t = insert 3 (insert 7 (insert 8 (insert 6 (insert 2 (insert 5 Nil)))))
+
+{-
+		LAB 3
+-}
+
+_getLevel lvl x = getLevel lvl 0 x []
+getLevel lvl curr Nil list = []
+getLevel lvl curr (Node k l r) list
+	| lvl == curr = list++[k]++(getLevel lvl (curr+1) l [])++(getLevel lvl (curr+1) r [])
+	| otherwise = list++(getLevel lvl (curr+1) l [])++(getLevel lvl (curr+1) r [])
+
+_indexOf el list = indexOf el 0 list
+indexOf el curr [] = error "empty list"
+indexOf el curr list
+	| curr >= length list = error "element not found"
+	| el == list!!curr = curr
+	| otherwise = indexOf el (curr+1) list
+
+_makeLayout x = makeLayout x [] 0 x
+makeLayout Nil list depth tree = []
+makeLayout (Node k l r) list depth tree = 
+	list++(makeLayout l [] (depth+1) tree)++
+	[(k,_indexOf k (_traverse LVR tree),depth)]++
+	(makeLayout r [] (depth+1) tree)
+
+--dumpDOT
+--enumerateLevel
