@@ -27,6 +27,9 @@ struct snake {
 	int currentDirection;
 	int size;
 	struct board* board;
+	int directionChangeCount;
+	int modifier;
+	int modifierSign;
 };
 
 struct snake* getSnake(int,int,int);
@@ -39,12 +42,12 @@ int main(int argc, char* argv[]) {
 
 	int i;
 
-	struct snake *snake = getSnake(3, 8, 8);
+	struct snake *snake = getSnake(3, 5, 5);
 
 	for(i=0;i<30;++i) {
 		move(snake);
 		display(snake);
-		usleep(500000);
+		usleep(600000);
 	}
 
 	clean(snake);
@@ -84,6 +87,9 @@ struct snake* getSnake(int size, int boardWidth, int boardHeight) {
 	snake->size = size;
 	snake->head = head;
 	snake->board = board;
+	snake->directionChangeCount = 0;
+	snake->modifier = 0;
+	snake->modifierSign = 1;
 	return snake;
 }
 
@@ -102,42 +108,64 @@ void clean(struct snake *snake) {
 void changeDirection(struct snake *snake) {
 	switch(snake->currentDirection) {
 		case RIGHT: {
-			if(snake->head->x >= snake->board->width-1) {
-				snake->head->x = snake->board->width-1;
+			if(snake->head->x >= snake->board->width-1-snake->modifier) {
+				snake->head->x = snake->board->width-1-snake->modifier;
 				snake->currentDirection = (snake->direction==CLOCKWISE) ?
 						DOWN : UP ;
+				++snake->directionChangeCount;
 			}
 			break;
 		}
 		case UP: {
-			if(snake->head->y <= 0) {
-				snake->head->y = 0;
+			if(snake->head->y <= snake->modifier) {
+				snake->head->y = snake->modifier;
 				snake->currentDirection = (snake->direction==CLOCKWISE) ?
 						RIGHT : LEFT ;
+				++snake->directionChangeCount;
 			}
 			break;
 		}
 		case DOWN: {
-			if(snake->head->y >= snake->board->height-1) {
-				snake->head->y = snake->board->height-1;
+			if(snake->head->y >= snake->board->height-1-snake->modifier) {
+				snake->head->y = snake->board->height-1-snake->modifier;
 				snake->currentDirection = (snake->direction==CLOCKWISE) ?
 						LEFT : RIGHT ;
+				++snake->directionChangeCount;
 			}
 			break;
 		}
 		case LEFT: {
-			if(snake->head->x <= 0) {
-				snake->head->x = 0;
+			if(snake->head->x <= snake->modifier) {
+				snake->head->x = snake->modifier;
 				snake->currentDirection = (snake->direction==CLOCKWISE) ?
 						UP : DOWN ;
+				++snake->directionChangeCount;
 			}
 			break;
 		}
 	}
+	if(snake->directionChangeCount == 3) {
+		snake->modifier += snake->modifierSign;
+	}
+	snake->directionChangeCount %= 4;
+}
+
+int oppositeDirection(int dir) {
+	if(dir == LEFT)return RIGHT;
+	if(dir == RIGHT)return LEFT;
+	if(dir == UP)return DOWN;
+	if(dir == DOWN)return UP;
+	return -1;
 }
 
 void move(struct snake *snake) {
 	struct snakeDot *curr;
+
+	if(		snake->head->x == snake->board->width/2 &&
+			snake->head->y == snake->board->height/2) {
+		snake->direction = oppositeDirection(snake->direction);
+	snake->modifierSign *= -1;
+	}
 
 	curr = snake->tail;
 	while(curr!=snake->head) {
@@ -186,4 +214,6 @@ void display(struct snake *snake) {
 		}
 		printf("\n");
 	}
+	printf("\n");
+	printf("{%d}{%d}\n", snake->modifier, snake->directionChangeCount);
 }
