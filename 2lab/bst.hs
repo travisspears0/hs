@@ -72,6 +72,14 @@ traverse pth (Node k l r) list = case pth of
 	RLV -> list++(traverse pth r [])++(traverse pth l [])++[k]
 	LRV -> list++(traverse pth l [])++(traverse pth r [])++[k]
 
+remove key Nil = Nil
+remove key (Node k l r)
+	| key > k						= Node k l (remove key r)
+	| key < k						= Node k (remove key l) r
+	| key == k && l/=Nil			= l
+	| key == k && r/=Nil			= r
+	| key == k && l==Nil && r==Nil	= Nil
+
 --toStrings ...
 --tmap ...
 --remove ...
