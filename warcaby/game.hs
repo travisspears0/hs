@@ -1,8 +1,10 @@
 import Data.Char
+import System.Random
 
 signs = take 8 ['a'..]
 numbers = take 8 [1..]
 b = createBoard
+bb = prepareGame b
 
 indexOf el list = indexOf' el list 0
 indexOf' el list curr
@@ -17,7 +19,7 @@ createBoard' n list
 	| otherwise = take 8 (repeat 0):(createBoard' (n+1) [])
 
 getFieldValue sign number board
-	| number > 8 || number < 0 || sign > 'h' || sign < 'a' = -1
+	| number > 7 || number < 0 || sign > 'h' || sign < 'a' = -1
 	| otherwise = board!!(indexOf sign signs)!!number
 
 setFieldValue sign number board newValue = 
@@ -41,4 +43,20 @@ prepareGame' board currPlayer currPaw
 		prepareGame' board (currPlayer+1) 0
 	| currPlayer > 2 = board
 
---makeMove fromSign fromNumber toSign toNumber board = 
+getGameValue player board = getGameValue' player board 'a' 0
+getGameValue' pl brd currSgn currNum
+	| val == -1 && currSgn > 'h' = 0
+	| val == -1 && currNum > 7 = getGameValue' pl brd (chr ((ord currSgn)+1)) 0
+	| val == 0 = getGameValue' pl brd currSgn (currNum+1)
+	| val == pl = 1 + getGameValue' pl brd currSgn (currNum+1)
+	| val /= pl = getGameValue' pl brd currSgn (currNum+1) - 1
+	where val = getFieldValue currSgn currNum brd
+
+makeMove player fromSign fromNumber toSign toNumber board
+	| valFrom == player || valTo == 0 = 
+		setFieldValue fromSign fromNumber (setFieldValue toSign toNumber board player) 0
+	| otherwise = error "cannot move!"
+	where
+		valFrom = getFieldValue fromSign fromNumber board
+		valTo = getFieldValue toSign toNumber board
+
