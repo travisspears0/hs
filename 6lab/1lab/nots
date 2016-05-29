@@ -1,0 +1,19 @@
+http://home.agh.edu.pl/~ptm/didactic:pp:start
+funkcje:
+	map
+	foldl,foldr
+	filter
+syntax
+	krotki
+	listy
+	funkcje
+operatory
+	spacja
+	$
+	:
+	[]
+sprawdzanie typu zmiennej
+	:t 
+
+	
+let triangles = [ (a,b,c) | c <- [1..10], b <- [1..10], a <- [1..10], a+b>c && a+c>b && b+c>a && (a^2+b^2==c^2 || a^2+c^2==b^2 || b^2+c^2==a^2) ]

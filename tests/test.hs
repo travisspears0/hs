@@ -18,3 +18,5 @@ rev' str res = (last str):rev' (take (length str-1) str) res
 data Tree a = E | L a | N (Tree a) a (Tree a)
 	deriving (Eq, Show, Ord)
 
+
+

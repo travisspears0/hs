@@ -21,10 +21,13 @@ data Box' a = Box' a String deriving(Show)
 
 nic a = Box a
 
+x=Box 4
+
 --sklej :: Box a ->(a->Box b)->Box b
---sklej (Box arg) f = f arg
-sklej (Box' arg str) f = Box' ret (att++str)
-	where Box' ret att = f arg
+sklej (Box arg) f = f arg
+
+--sklej (Box' arg str) f = Box' ret (att++str)
+--	where Box' ret att = f arg
 
 
 {-
@@ -33,3 +36,5 @@ sklej (Box' arg str) f = Box' ret (att++str)
 		String str;
 	}
 -}
+data No 
+data Ma x = J x | No deriving(Show)
