@@ -49,42 +49,64 @@ removePaw (p:paws) sgn num
 
 data DIRECTION = UP | DOWN deriving(Show, Eq, Ord)
 
-getGameString blacks whites = getGameString' blacks whites "abcdefgh" 'a' 1
+getGameString blacks whites = getGameString' blacks whites "" 'a' 1
 getGameString' blacks whites board currSgn currNum
-	| currNum > 8 = getGameString' blacks whites board (chr ((ord currSgn)+1)) 1
-	| currSgn > 'h' = board++"abcdefgh"
-	| isFieldBusy blacks currSgn currNum = getGameString' blacks whites (board++"b") currSgn (currNum+1)
-	| isFieldBusy whites currSgn currNum = getGameString' blacks whites (board++"w") currSgn (currNum+1)
-	| otherwise = getGameString' blacks whites (board++"_") currSgn (currNum+1)
+	| currNum > 8 = board
+	| currSgn > 'h' = getGameString' blacks whites board 'a' (currNum+1)
+	| isFieldBusy blacks currSgn currNum = getGameString' blacks whites (board++"b") (chr ((ord currSgn)+1)) currNum
+	| isFieldBusy whites currSgn currNum = getGameString' blacks whites (board++"w") (chr ((ord currSgn)+1)) currNum
+	| otherwise = getGameString' blacks whites (board++"_") (chr ((ord currSgn)+1)) currNum
 
-printGame' b w = printGame'' (getGameString b w) "" '0'
-printGame'' "" res n = res
-printGame'' str res n = printGame'' (drop 8 str) (res++(take 8 str)++[n]++"\n") (chr ((ord n)+1))
+printGame' b w = printGame'' (getGameString b w) "" '1'
+printGame'' "" res n = "_abcdefgh_\n"++res++"_abcdefgh_\n"
+printGame'' str res n = printGame'' (drop 8 str) (res++[n]++(take 8 str)++[n]++"\n") (chr ((ord n)+1))
 
 printGame b w = putStr(printGame' b w)
 
-
 hasPawBeat paws opponentPaws index dir
-	| 	dir == UP && (chr ((ord sgn)-2)) >= 'a' && (num+2) <= 8 &&
-		isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num+1) &&
-		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num+2)) = True
+	| 	dir == UP && (chr ((ord sgn)+2)) <= 'h' && (num-2) >=1 &&
+		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num-1) &&
+		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num-2)) = True
 	| 	dir == UP && (chr ((ord sgn)-2)) >= 'a' && (num-2) >= 1 &&
 		isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num-1) &&
 		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num-2)) = True
 	| 	dir == DOWN && (chr ((ord sgn)+2)) <= 'h' && (num+2) <= 8 &&
 		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num+1) &&
 		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num+2)) = True
-	| 	dir == DOWN && (chr ((ord sgn)+2)) <= 'h' && (num-2) >= 1 &&
-		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num-1) &&
-		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num-2)) = True
+	| 	dir == DOWN && (chr ((ord sgn)-2)) >= 'a' && (num+2) <= 8 &&
+		isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num+1) &&
+		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num+2)) = True
 	| otherwise = False
 	where
 		sgn = fst (paws!!index)
 		num = snd (paws!!index)
-{-}
-findOptions paws opponentPaws sgn num dir
-	| dir == UP = 
-	| dir == DOWN = 
--}
 
-t = movePaw b w 'b' 2 'b' 6
+getPawsBeats paws opponentPaws dir = getPawsBeats' paws opponentPaws dir 0 []
+getPawsBeats' paws opponentPaws dir currIndex list
+	| currIndex >= length paws = list
+	| hasPawBeat paws opponentPaws currIndex dir =
+		getPawsBeats' paws opponentPaws dir (currIndex+1) (currIndex:list)
+	| otherwise = getPawsBeats' paws opponentPaws dir (currIndex+1) list
+
+canPawMove paws dir sgn num
+	| 	dir == UP && (chr ((ord sgn)+1)) <= 'h' && (num-1) >=1 &&
+		not (isFieldBusy paws (chr ((ord sgn)+1)) (num-1)) = True
+	| 	dir == UP && (chr ((ord sgn)-1)) >= 'a' && (num-1) >=1 &&
+		not (isFieldBusy paws (chr ((ord sgn)-1)) (num-1)) = True
+	| 	dir == DOWN && (chr ((ord sgn)+1)) <= 'h' && (num+1) <= 8 &&
+		not (isFieldBusy paws (chr ((ord sgn)+1)) (num+1)) = True
+	| 	dir == DOWN && (chr ((ord sgn)-1)) >= 'a' && (num+1) <= 8 &&
+		not (isFieldBusy paws (chr ((ord sgn)-1)) (num+1)) = True
+	| otherwise = False
+
+getPawsMoves paws opponentPaws dir = getPawsMoves' paws opponentPaws dir 0 []
+getPawsMoves' paws opponentPaws dir currIndex list
+	| currIndex >= length paws = list
+	| canPawMove (paws++opponentPaws) dir sgn num = getPawsMoves' paws opponentPaws dir (currIndex+1) (currIndex:list)
+	| otherwise = getPawsMoves' paws opponentPaws dir (currIndex+1) list
+	where
+		sgn = fst (paws!!currIndex)
+		num = snd (paws!!currIndex)
+
+ww = movePaw b w 'g' 1 'g' 5
+bb = movePaw (movePaw b w 'a' 7 'a' 3) w 'e' 7 'e' 3
