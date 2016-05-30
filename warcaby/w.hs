@@ -4,6 +4,10 @@ getSign (Paw s n c) = s
 getNumber (Paw s n c) = n
 getColor (Paw s n c) = c
 -}
+
+import Data.Char
+import System.Random
+
 w = zip (take 8 ['a'..]) $take 8 $cycle [1,2]
 b = zip (take 8 ['a'..]) $take 8 $cycle [7,8]
 
@@ -43,19 +47,44 @@ removePaw (p:paws) sgn num
 	| fst p == sgn && snd p == num = paws
 	| otherwise = p:(removePaw paws sgn num)
 
-data DIRECTION = UP | DOWN deriving(Show)
+data DIRECTION = UP | DOWN deriving(Show, Eq, Ord)
 
-hasPawBeat paws opponentPaws sgn num dir
-	| 	dir == UP &&
-		isFieldBusy opponentPaws (chr ((ord cs)-1)) (num+1) &&
-		not isFieldBusy (paws++opponentPaws) (chr ((ord cs)-2)) (num+2) = True
-	| 	dir == UP &&
-		isFieldBusy opponentPaws (chr ((ord cs)-1)) (num-1) &&
-		not isFieldBusy (paws++opponentPaws) (chr ((ord cs)-2)) (num-2) = True
-	| dir == DOWN = 
+getGameString blacks whites = getGameString' blacks whites "abcdefgh" 'a' 1
+getGameString' blacks whites board currSgn currNum
+	| currNum > 8 = getGameString' blacks whites board (chr ((ord currSgn)+1)) 1
+	| currSgn > 'h' = board++"abcdefgh"
+	| isFieldBusy blacks currSgn currNum = getGameString' blacks whites (board++"b") currSgn (currNum+1)
+	| isFieldBusy whites currSgn currNum = getGameString' blacks whites (board++"w") currSgn (currNum+1)
+	| otherwise = getGameString' blacks whites (board++"_") currSgn (currNum+1)
 
-{-
-findOptions paws sgn num dir
+printGame' b w = printGame'' (getGameString b w) "" '0'
+printGame'' "" res n = res
+printGame'' str res n = printGame'' (drop 8 str) (res++(take 8 str)++[n]++"\n") (chr ((ord n)+1))
+
+printGame b w = putStr(printGame' b w)
+
+
+hasPawBeat paws opponentPaws index dir
+	| 	dir == UP && (chr ((ord sgn)-2)) >= 'a' && (num+2) <= 8 &&
+		isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num+1) &&
+		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num+2)) = True
+	| 	dir == UP && (chr ((ord sgn)-2)) >= 'a' && (num-2) >= 1 &&
+		isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num-1) &&
+		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num-2)) = True
+	| 	dir == DOWN && (chr ((ord sgn)+2)) <= 'h' && (num+2) <= 8 &&
+		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num+1) &&
+		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num+2)) = True
+	| 	dir == DOWN && (chr ((ord sgn)+2)) <= 'h' && (num-2) >= 1 &&
+		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num-1) &&
+		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num-2)) = True
+	| otherwise = False
+	where
+		sgn = fst (paws!!index)
+		num = snd (paws!!index)
+{-}
+findOptions paws opponentPaws sgn num dir
 	| dir == UP = 
 	| dir == DOWN = 
 -}
+
+t = movePaw b w 'b' 2 'b' 6
