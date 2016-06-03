@@ -1,4 +1,5 @@
-{-data Paw sign number color = Paw Char Int String deriving(Show)
+{-
+data Paw sign number color = Paw Char Int String deriving(Show)
 
 getSign (Paw s n c) = s
 getNumber (Paw s n c) = n
@@ -7,6 +8,8 @@ getColor (Paw s n c) = c
 
 import Data.Char
 import System.Random
+
+rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
 
 w = zip (take 8 ['a'..]) $take 8 $cycle [1,2]
 b = zip (take 8 ['a'..]) $take 8 $cycle [7,8]
@@ -57,12 +60,12 @@ getGameString' blacks whites board currSgn currNum
 	| isFieldBusy whites currSgn currNum = getGameString' blacks whites (board++"w") (chr ((ord currSgn)+1)) currNum
 	| otherwise = getGameString' blacks whites (board++"_") (chr ((ord currSgn)+1)) currNum
 
+printGame b w = putStr(printGame' b w)
 printGame' b w = printGame'' (getGameString b w) "" '1'
 printGame'' "" res n = "_abcdefgh_\n"++res++"_abcdefgh_\n"
 printGame'' str res n = printGame'' (drop 8 str) (res++[n]++(take 8 str)++[n]++"\n") (chr ((ord n)+1))
 
-printGame b w = putStr(printGame' b w)
-
+{-
 hasPawBeat paws opponentPaws index dir
 	| 	dir == UP && (chr ((ord sgn)+2)) <= 'h' && (num-2) >=1 &&
 		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num-1) &&
@@ -87,6 +90,28 @@ getPawsBeats' paws opponentPaws dir currIndex list
 	| hasPawBeat paws opponentPaws currIndex dir =
 		getPawsBeats' paws opponentPaws dir (currIndex+1) (currIndex:list)
 	| otherwise = getPawsBeats' paws opponentPaws dir (currIndex+1) list
+-}
+
+test 0 = []
+test n
+	| n == 4 = (chr(ord('a')+n),n):(test (n-1))
+	| otherwise = (chr(ord('a')+n),n):(test (n-1))
+
+getPawBeats paws opponentPaws UP sgn num list n
+	| onTheLeft && onTheRight && fst l >= fst r = l
+	| onTheLeft && onTheRight && fst l < fst r = r
+	| onTheLeft = getPawBeats paws opponentPaws UP (chr ((ord sgn)-2)) (num-2) ((sgn,num):list) (n+1)
+	| onTheRight = getPawBeats paws opponentPaws UP (chr ((ord sgn)+2)) (num-2) ((sgn,num):list) (n+1)
+	| otherwise = (n,reverse ((sgn,num):list))
+	where
+		onTheRight = (chr ((ord sgn)+2)) <= 'h' && (num-2) >=1 &&
+			isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num-1) &&
+			not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num-2))
+		onTheLeft = (chr ((ord sgn)-2)) >= 'a' && (num-2) >= 1 &&
+			isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num-1) &&
+			not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num-2))
+		l = getPawBeats paws opponentPaws UP (chr ((ord sgn)-2)) (num-2) ((sgn,num):list) (n+1)
+		r = getPawBeats paws opponentPaws UP (chr ((ord sgn)+2)) (num-2) ((sgn,num):list) (n+1)
 
 canPawMove paws dir sgn num
 	| 	dir == UP && (chr ((ord sgn)+1)) <= 'h' && (num-1) >=1 &&
@@ -108,5 +133,21 @@ getPawsMoves' paws opponentPaws dir currIndex list
 		sgn = fst (paws!!currIndex)
 		num = snd (paws!!currIndex)
 
-ww = movePaw b w 'g' 1 'g' 5
-bb = movePaw (movePaw b w 'a' 7 'a' 3) w 'e' 7 'e' 3
+--wyszukuje zbior ruchow rownowaznych o najwyzszym priorytecie czyli najpierw szuka bic
+--a jak nie ma bic to szuka zywklych ruchow
+{-}
+aiMakeMove paws opponentPaws dir moveNumber
+	| length b > 0 = aiBeat paws opponentPaws 
+	| otherwise = 0
+	where
+		b = getPawsBeats paws opponentPaws dir
+		m = getPawsMoves paws opponentPaws dir
+-}
+getRandomElement list n = list!!(rnd n 0 (length list - 1))
+--x = RandomRIO (1,10)
+
+aiBeat paws opponentPaws sgn num = 0
+aiMove = 0
+
+ww = movePaw b (movePaw b (movePaw b w 'g' 1 'b' 4) 'd' 2 'd' 4) 'b' 2 'b' 6
+bb = movePaw (movePaw (movePaw b w 'c' 7 'c' 5) w 'a' 7 'a' 3) w 'e' 7 'e' 3
