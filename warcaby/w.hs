@@ -7,6 +7,7 @@ getColor (Paw s n c) = c
 -}
 
 import Data.Char
+import Data.List.Split
 import System.Random
 import System.Process
 
@@ -47,9 +48,9 @@ isFieldBusy (p:paws) sgn num
 	| otherwise = isFieldBusy paws sgn num
 
 movePaw paws opponentPaws currSgn currNum destSgn destNum
-	| isFieldBusy (paws++opponentPaws) destSgn destNum == True = error "field is busy"
-	| indexOfPaw paws currSgn currNum /= -1 = movePaw' paws currSgn currNum destSgn destNum
-	| otherwise = error "field is busy"
+	| 	isFieldBusy (paws++opponentPaws) destSgn destNum == True || --Nothing--error --error "field is busy"
+		indexOfPaw paws currSgn currNum == -1 = []
+	| otherwise = movePaw' paws currSgn currNum destSgn destNum
 
 movePaw' [] currSgn currNum destSgn destNum = []
 movePaw' (p:paws) currSgn currNum destSgn destNum
@@ -155,13 +156,40 @@ getRandomElement list n = list!!(rnd n 0 (length list - 1))
 
 aiBeat paws opponentPaws sgn num = 0
 aiMove = 0
-
+x=movePaw w b 'f' 3 'f' 5
+{-}
 ww = movePaw (movePaw w b 'f' 3 'f' 5) b 'c' 2 'f' 3
 bb = movePaw (movePaw b w 'e' 6 'e' 4) w 'b' 7 'e' 6
+-}
+isGameOver blacks whites = length blacks == 0 && length whites == 0
 
-main = do
+makeMove paws opponentPaws = do
 	move <- getLine
 	system "clear"
 	putStrLn("your move: " ++ move)
 	printGame b w
-	if move == "q" then return "ok" else main
+	if move == "q" then return "ok" else makeMove paws opponentPaws
+
+
+
+
+
+
+
+
+
+{-
+smieci
+------------------------------------------------------------------
+spl delimiter str = spl' delimiter str [] []
+
+spl' delimiter [] currentWord res = (res++reverse currentWord)
+spl' delimiter (s:str) currentWord res
+	| s == delimiter = spl' delimiter str [] (res++reverse currentWord)
+	| otherwise = spl' delimiter str (s:currentWord) res
+
+count [] n = n
+count (s:str) n
+	| s == ' ' = count str (n+1)
+	| otherwise = count str n
+-}
