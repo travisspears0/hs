@@ -8,6 +8,7 @@ getColor (Paw s n c) = c
 
 import Data.Char
 import System.Random
+import System.Process
 
 rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
 
@@ -157,3 +158,10 @@ aiMove = 0
 
 ww = movePaw (movePaw w b 'f' 3 'f' 5) b 'c' 2 'f' 3
 bb = movePaw (movePaw b w 'e' 6 'e' 4) w 'b' 7 'e' 6
+
+main = do
+	move <- getLine
+	system "clear"
+	putStrLn("your move: " ++ move)
+	printGame b w
+	if move == "q" then return "ok" else main
