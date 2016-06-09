@@ -11,8 +11,12 @@ import System.Random
 
 rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
 
-w = zip (take 8 ['a'..]) $take 8 $cycle [1,2]
-b = zip (take 8 ['a'..]) $take 8 $cycle [7,8]
+w = (zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3])
+b = (zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6])
+
+d n = n :: Integer
+
+getFieldByCode n = ceiling(n)*2 - ((ceiling(n/4)-1) `mod` 2)
 
 getGameValue blacks whites color
 	| color == 'b' = (length blacks) - (length whites)
@@ -24,27 +28,32 @@ indexOfPaw' paws sgn num index
 	| fst p == sgn && snd p == num = index
 	| otherwise = indexOfPaw' paws sgn num (index+1)
 	where p = paws!!index
-
+{-
+setSign [] currSgn currNum newSgn = []
 setSign (p:paws) currSgn currNum newSgn
 	| fst p == currSgn && snd p == currNum = (newSgn,currNum):paws
 	| otherwise = p:(setSign paws currSgn currNum newSgn)
 
+setNum [] currSgn currNum newNum = []
 setNum (p:paws) currSgn currNum newNum
 	| fst p == currSgn && snd p == currNum = (currSgn,newNum):paws
 	| otherwise = p:(setNum paws currSgn currNum newNum)
-
+-}
 isFieldBusy [] sgn num = False
 isFieldBusy (p:paws) sgn num
+	| sgn < 'a' || sgn > 'h' || num > 8 || num < 1 = True
 	| fst p == sgn && snd p == num = True
 	| otherwise = isFieldBusy paws sgn num
 
-movePaw blacks whites currSgn currNum destSgn destNum
-	| isFieldBusy (blacks++whites) destSgn destNum == True = []
-	| indexOfPaw blacks currSgn currNum /= -1 = movePaw' blacks currSgn currNum destSgn destNum
-	| indexOfPaw whites currSgn currNum /= -1 = movePaw' whites currSgn currNum destSgn destNum
-		
-movePaw' paws currSgn currNum destSgn destNum =
-	setSign (setNum paws currSgn currNum destNum) currSgn destNum destSgn
+movePaw paws opponentPaws currSgn currNum destSgn destNum
+	| isFieldBusy (paws++opponentPaws) destSgn destNum == True = error "field is busy"
+	| indexOfPaw paws currSgn currNum /= -1 = movePaw' paws currSgn currNum destSgn destNum
+	| otherwise = error "field is busy"
+
+movePaw' [] currSgn currNum destSgn destNum = []
+movePaw' (p:paws) currSgn currNum destSgn destNum
+	| fst p == currSgn && snd p == currNum = (destSgn,destNum):paws
+	| otherwise = p:(movePaw' paws currSgn currNum destSgn destNum)
 
 removePaw (p:paws) sgn num
 	| fst p == sgn && snd p == num = paws
@@ -65,43 +74,22 @@ printGame' b w = printGame'' (getGameString b w) "" '1'
 printGame'' "" res n = "_abcdefgh_\n"++res++"_abcdefgh_\n"
 printGame'' str res n = printGame'' (drop 8 str) (res++[n]++(take 8 str)++[n]++"\n") (chr ((ord n)+1))
 
-{-
-hasPawBeat paws opponentPaws index dir
-	| 	dir == UP && (chr ((ord sgn)+2)) <= 'h' && (num-2) >=1 &&
-		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num-1) &&
-		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num-2)) = True
-	| 	dir == UP && (chr ((ord sgn)-2)) >= 'a' && (num-2) >= 1 &&
-		isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num-1) &&
-		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num-2)) = True
-	| 	dir == DOWN && (chr ((ord sgn)+2)) <= 'h' && (num+2) <= 8 &&
-		isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num+1) &&
-		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num+2)) = True
-	| 	dir == DOWN && (chr ((ord sgn)-2)) >= 'a' && (num+2) <= 8 &&
-		isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num+1) &&
-		not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num+2)) = True
-	| otherwise = False
-	where
-		sgn = fst (paws!!index)
-		num = snd (paws!!index)
-
-getPawsBeats paws opponentPaws dir = getPawsBeats' paws opponentPaws dir 0 []
-getPawsBeats' paws opponentPaws dir currIndex list
-	| currIndex >= length paws = list
-	| hasPawBeat paws opponentPaws currIndex dir =
-		getPawsBeats' paws opponentPaws dir (currIndex+1) (currIndex:list)
-	| otherwise = getPawsBeats' paws opponentPaws dir (currIndex+1) list
--}
-
 test 0 = []
 test n
 	| n == 4 = (chr(ord('a')+n),n):(test (n-1))
 	| otherwise = (chr(ord('a')+n),n):(test (n-1))
 
-getPawBeats paws opponentPaws UP sgn num list n
+--zwaraca krotke (ilosc_skokow,[(x1,n1),(x2,n2),...]) z lista ruchow wykrywajac od razu najdluzsza sekwencje czyli
+--najwieksza ilosc bic
+getPawBeats paws opponentPaws direction sgn num
+	| direction == UP = getPawBeatsUp paws opponentPaws sgn num [] 0
+	| direction == DOWN = getPawBeatsDown paws opponentPaws sgn num [] 0
+--dla UP
+getPawBeatsUp paws opponentPaws sgn num list n
 	| onTheLeft && onTheRight && fst l >= fst r = l
 	| onTheLeft && onTheRight && fst l < fst r = r
-	| onTheLeft = getPawBeats paws opponentPaws UP (chr ((ord sgn)-2)) (num-2) ((sgn,num):list) (n+1)
-	| onTheRight = getPawBeats paws opponentPaws UP (chr ((ord sgn)+2)) (num-2) ((sgn,num):list) (n+1)
+	| onTheLeft = getPawBeatsUp paws opponentPaws (chr ((ord sgn)-2)) (num-2) ((sgn,num):list) (n+1)
+	| onTheRight = getPawBeatsUp paws opponentPaws (chr ((ord sgn)+2)) (num-2) ((sgn,num):list) (n+1)
 	| otherwise = (n,reverse ((sgn,num):list))
 	where
 		onTheRight = (chr ((ord sgn)+2)) <= 'h' && (num-2) >=1 &&
@@ -110,8 +98,26 @@ getPawBeats paws opponentPaws UP sgn num list n
 		onTheLeft = (chr ((ord sgn)-2)) >= 'a' && (num-2) >= 1 &&
 			isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num-1) &&
 			not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num-2))
-		l = getPawBeats paws opponentPaws UP (chr ((ord sgn)-2)) (num-2) ((sgn,num):list) (n+1)
-		r = getPawBeats paws opponentPaws UP (chr ((ord sgn)+2)) (num-2) ((sgn,num):list) (n+1)
+		l = getPawBeatsUp paws opponentPaws (chr ((ord sgn)-2)) (num-2) ((sgn,num):list) (n+1)
+		r = getPawBeatsUp paws opponentPaws (chr ((ord sgn)+2)) (num-2) ((sgn,num):list) (n+1)
+--dla DOWN
+getPawBeatsDown paws opponentPaws sgn num list n
+	| onTheLeft && onTheRight && fst l >= fst r = l
+	| onTheLeft && onTheRight && fst l < fst r = r
+	| onTheLeft = getPawBeatsDown paws opponentPaws (chr ((ord sgn)-2)) (num+2) ((sgn,num):list) (n+1)
+	| onTheRight = getPawBeatsDown paws opponentPaws (chr ((ord sgn)+2)) (num+2) ((sgn,num):list) (n+1)
+	| otherwise = (n,reverse ((sgn,num):list))
+	where
+		onTheRight = (chr ((ord sgn)+2)) <= 'h' && (num+2) >=1 &&
+			isFieldBusy opponentPaws (chr ((ord sgn)+1)) (num+1) &&
+			not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)+2)) (num+2))
+		onTheLeft = (chr ((ord sgn)-2)) >= 'a' && (num+2) >= 1 &&
+			isFieldBusy opponentPaws (chr ((ord sgn)-1)) (num+1) &&
+			not (isFieldBusy (paws++opponentPaws) (chr ((ord sgn)-2)) (num+2))
+		l = getPawBeatsDown paws opponentPaws (chr ((ord sgn)-2)) (num+2) ((sgn,num):list) (n+1)
+		r = getPawBeatsDown paws opponentPaws (chr ((ord sgn)+2)) (num+2) ((sgn,num):list) (n+1)
+
+
 
 canPawMove paws dir sgn num
 	| 	dir == UP && (chr ((ord sgn)+1)) <= 'h' && (num-1) >=1 &&
@@ -149,5 +155,5 @@ getRandomElement list n = list!!(rnd n 0 (length list - 1))
 aiBeat paws opponentPaws sgn num = 0
 aiMove = 0
 
-ww = movePaw b (movePaw b (movePaw b w 'g' 1 'b' 4) 'd' 2 'd' 4) 'b' 2 'b' 6
-bb = movePaw (movePaw (movePaw b w 'c' 7 'c' 5) w 'a' 7 'a' 3) w 'e' 7 'e' 3
+ww = movePaw (movePaw w b 'f' 3 'f' 5) b 'c' 2 'f' 3
+bb = movePaw (movePaw b w 'e' 6 'e' 4) w 'b' 7 'e' 6
