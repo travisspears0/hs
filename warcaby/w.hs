@@ -16,9 +16,12 @@ rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
 w = (zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3])
 b = (zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6])
 
-d n = n :: Integer
-
 getFieldByCode n = ceiling(n)*2 - ((ceiling(n/4)-1) `mod` 2)
+
+gfbc n
+	| m == 0 = ('h',floor(fromIntegral(n)/8))
+	| otherwise = (chr(ord 'a'-1+m),floor(fromIntegral(n)/8)+1)
+	where m = n `mod` 8
 
 getGameValue blacks whites color
 	| color == 'b' = (length blacks) - (length whites)
@@ -163,14 +166,26 @@ bb = movePaw (movePaw b w 'e' 6 'e' 4) w 'b' 7 'e' 6
 -}
 isGameOver blacks whites = length blacks == 0 && length whites == 0
 
-makeMove paws opponentPaws = do
+die str f = do
+	putStrLn("error: " ++ str)
+	f
+
+orderMove paws opponentPaws = do
 	move <- getLine
+	if (length (splitOn "-" move) /= 2)
+		then die "wrong move format(should be [a]-[b])" (orderMove paws opponentPaws)
+		else makeMove paws opponentPaws ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
+
+makeMove paws opponentPaws from to = do
 	system "clear"
-	putStrLn("your move: " ++ move)
-	printGame b w
-	if move == "q" then return "ok" else makeMove paws opponentPaws
-
-
+	putStrLn("your move: " ++ from ++ " to " ++ to)
+	printGame paws opponentPaws
+	{-where
+		sgnFrom getF
+		numFrom 
+		sgnTo 
+		numTo 
+-}
 
 
 
