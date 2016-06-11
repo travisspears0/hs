@@ -16,9 +16,8 @@ rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
 w = (zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3])
 b = (zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6])
 
-getFieldByCode n = ceiling(n)*2 - ((ceiling(n/4)-1) `mod` 2)
-
-gfbc n
+getFieldByCode n = getFieldByCode' (ceiling(n)*2 - ((ceiling(n/4)-1) `mod` 2))
+getFieldByCode' n
 	| m == 0 = ('h',floor(fromIntegral(n)/8))
 	| otherwise = (chr(ord 'a'-1+m),floor(fromIntegral(n)/8)+1)
 	where m = n `mod` 8
@@ -164,47 +163,58 @@ x=movePaw w b 'f' 3 'f' 5
 ww = movePaw (movePaw w b 'f' 3 'f' 5) b 'c' 2 'f' 3
 bb = movePaw (movePaw b w 'e' 6 'e' 4) w 'b' 7 'e' 6
 -}
-isGameOver blacks whites = length blacks == 0 && length whites == 0
+isGameOver blacks whites = length blacks == 0 || length whites == 0
 
 die str f = do
-	putStrLn("error: " ++ str)
+	putStrLn(str)
 	f
 
-orderMove paws opponentPaws = do
+colors = ["white","black"]
+
+orderMove moveCounter blacks whites str = do
+	system "clear"
+	printGame blacks whites
+	putStrLn("move ["++show(moveCounter+1)++"] "++colors!!turn++"s to move")
+	putStrLn(str)
 	move <- getLine
 	if (length (splitOn "-" move) /= 2)
-		then die "wrong move format(should be [a]-[b])" (orderMove paws opponentPaws)
-		else makeMove paws opponentPaws ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
+		then orderMove moveCounter blacks whites "wrong input"
+		else 
+			if turn == 0
+			then whitesMove moveCounter blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1) --makeMove moveCounter 0 blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
+			else blacksMove moveCounter blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
+	where 
+		turn = (moveCounter `mod` 2)
 
-makeMove paws opponentPaws from to = do
+blacksMove moveCounter blacks whites from to = do
+	if (movePaw blacks whites sgnFrom numFrom sgnTo numTo) == []
+		then orderMove moveCounter blacks whites "*could not make that move"
+		else orderMove (moveCounter+1) blacks (movePaw blacks whites sgnFrom numFrom sgnTo numTo) 
+				("blacks moved from ("++[sgnFrom]++","++(show numFrom)++") to ("++[sgnTo]++","++(show numTo)++")")
+	orderMove (moveCounter+1) blacks whites ""
+	where
+		sgnFrom = fst (getFieldByCode (read from :: Float))
+		numFrom = snd (getFieldByCode (read from :: Float))
+		sgnTo = fst (getFieldByCode (read to :: Float))
+		numTo = snd (getFieldByCode (read to :: Float))
+
+whitesMove moveCounter blacks whites from to = do
+	if (movePaw whites blacks sgnFrom numFrom sgnTo numTo) == []
+		then orderMove moveCounter blacks whites "*could not make that move"
+		else orderMove (moveCounter+1) blacks (movePaw whites blacks sgnFrom numFrom sgnTo numTo) 
+				("whites moved from ("++[sgnFrom]++","++(show numFrom)++") to ("++[sgnTo]++","++(show numTo)++")")
+	orderMove (moveCounter+1) blacks whites ""
+	where
+		sgnFrom = fst (getFieldByCode (read from :: Float))
+		numFrom = snd (getFieldByCode (read from :: Float))
+		sgnTo = fst (getFieldByCode (read to :: Float))
+		numTo = snd (getFieldByCode (read to :: Float))
+
+gameStart = do
 	system "clear"
-	putStrLn("your move: " ++ from ++ " to " ++ to)
-	printGame paws opponentPaws
-	{-where
-		sgnFrom getF
-		numFrom 
-		sgnTo 
-		numTo 
--}
-
-
-
-
-
-
-
-{-
-smieci
-------------------------------------------------------------------
-spl delimiter str = spl' delimiter str [] []
-
-spl' delimiter [] currentWord res = (res++reverse currentWord)
-spl' delimiter (s:str) currentWord res
-	| s == delimiter = spl' delimiter str [] (res++reverse currentWord)
-	| otherwise = spl' delimiter str (s:currentWord) res
-
-count [] n = n
-count (s:str) n
-	| s == ' ' = count str (n+1)
-	| otherwise = count str n
--}
+	putStrLn("game started")
+	printGame blacks whites
+	orderMove 0 blacks whites ""
+		where
+			whites = ((zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3]))
+			blacks = ((zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))
