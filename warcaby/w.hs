@@ -1,11 +1,3 @@
-{-
-data Paw sign number color = Paw Char Int String deriving(Show)
-
-getSign (Paw s n c) = s
-getNumber (Paw s n c) = n
-getColor (Paw s n c) = c
--}
-
 import Data.Char
 import Data.List.Split
 import System.Random
@@ -15,6 +7,9 @@ rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
 
 w = (zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3])
 b = (zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6])
+
+ww = (('f',5):(zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3]))
+bb = removePaw ((('c',4):(zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))) 'f' 7
 
 getFieldByCode n = getFieldByCode' (ceiling(n)*2 - ((ceiling(n/4)-1) `mod` 2))
 getFieldByCode' n
@@ -32,17 +27,7 @@ indexOfPaw' paws sgn num index
 	| fst p == sgn && snd p == num = index
 	| otherwise = indexOfPaw' paws sgn num (index+1)
 	where p = paws!!index
-{-
-setSign [] currSgn currNum newSgn = []
-setSign (p:paws) currSgn currNum newSgn
-	| fst p == currSgn && snd p == currNum = (newSgn,currNum):paws
-	| otherwise = p:(setSign paws currSgn currNum newSgn)
 
-setNum [] currSgn currNum newNum = []
-setNum (p:paws) currSgn currNum newNum
-	| fst p == currSgn && snd p == currNum = (currSgn,newNum):paws
-	| otherwise = p:(setNum paws currSgn currNum newNum)
--}
 isFieldBusy [] sgn num = False
 isFieldBusy (p:paws) sgn num
 	| sgn < 'a' || sgn > 'h' || num > 8 || num < 1 = True
@@ -121,27 +106,58 @@ getPawBeatsDown paws opponentPaws sgn num list n
 		l = getPawBeatsDown paws opponentPaws (chr ((ord sgn)-2)) (num+2) ((sgn,num):list) (n+1)
 		r = getPawBeatsDown paws opponentPaws (chr ((ord sgn)+2)) (num+2) ((sgn,num):list) (n+1)
 
+canPawMove paws dir sgn num step
+	| 	dir == UP && (chr ((ord sgn)+step)) <= 'h' && (num-step) >=1 &&
+		not (isFieldBusy paws (chr ((ord sgn)+step)) (num-step)) = True
+	| 	dir == UP && (chr ((ord sgn)-step)) >= 'a' && (num-step) >=1 &&
+		not (isFieldBusy paws (chr ((ord sgn)-step)) (num-step)) = True
+	| 	dir == DOWN && (chr ((ord sgn)+step)) <= 'h' && (num+step) <= 8 &&
+		not (isFieldBusy paws (chr ((ord sgn)+step)) (num+step)) = True
+	| 	dir == DOWN && (chr ((ord sgn)-step)) >= 'a' && (num+step) <= 8 &&
+		not (isFieldBusy paws (chr ((ord sgn)-step)) (num+step)) = True
+	| otherwise = False
 
+isMoveAvailable paws dir currSgn currNum destSgn destNum
+	| not (canPawMove paws dir currSgn currNum 1) = False
+	| dir==UP && (chr ((ord currSgn)+1))==destSgn && (currNum-1)==destNum=True
+	| dir==UP && (chr ((ord currSgn)-1))==destSgn && (currNum-1)==destNum=True
+	| dir==DOWN && (chr ((ord currSgn)+1))==destSgn && (currNum+1)==destNum=True
+	| dir==DOWN && (chr ((ord currSgn)-1))==destSgn && (currNum+1)==destNum=True
+	| otherwise = False
 
-canPawMove paws dir sgn num
-	| 	dir == UP && (chr ((ord sgn)+1)) <= 'h' && (num-1) >=1 &&
-		not (isFieldBusy paws (chr ((ord sgn)+1)) (num-1)) = True
-	| 	dir == UP && (chr ((ord sgn)-1)) >= 'a' && (num-1) >=1 &&
-		not (isFieldBusy paws (chr ((ord sgn)-1)) (num-1)) = True
-	| 	dir == DOWN && (chr ((ord sgn)+1)) <= 'h' && (num+1) <= 8 &&
-		not (isFieldBusy paws (chr ((ord sgn)+1)) (num+1)) = True
-	| 	dir == DOWN && (chr ((ord sgn)-1)) >= 'a' && (num+1) <= 8 &&
-		not (isFieldBusy paws (chr ((ord sgn)-1)) (num+1)) = True
+isBeatAvailable paws opponentPaws dir currSgn currNum destSgn destNum
+	| not (canPawMove (paws++opponentPaws) dir currSgn currNum 2) = False
+	| dir==UP && (chr ((ord currSgn)+2))==destSgn && (currNum-2)==destNum &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)+1)) (currNum-1) = True
+	| dir==UP && (chr ((ord currSgn)-2))==destSgn && (currNum-2)==destNum &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)-1)) (currNum-1) = True
+	| dir==DOWN && (chr ((ord currSgn)+2))==destSgn && (currNum+2)==destNum &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)+1)) (currNum+1) = True
+	| dir==DOWN && (chr ((ord currSgn)-2))==destSgn && (currNum+2)==destNum &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)-1)) (currNum+1) = True
 	| otherwise = False
 
 getPawsMoves paws opponentPaws dir = getPawsMoves' paws opponentPaws dir 0 []
 getPawsMoves' paws opponentPaws dir currIndex list
 	| currIndex >= length paws = list
-	| canPawMove (paws++opponentPaws) dir sgn num = getPawsMoves' paws opponentPaws dir (currIndex+1) (currIndex:list)
+	| canPawMove (paws++opponentPaws) dir sgn num 1 = getPawsMoves' paws opponentPaws dir (currIndex+1) (currIndex:list)
 	| otherwise = getPawsMoves' paws opponentPaws dir (currIndex+1) list
 	where
 		sgn = fst (paws!!currIndex)
 		num = snd (paws!!currIndex)
+
+
+
+checkBeat dir moveCounter paws opponentPaws from [] = True
+checkBeat dir moveCounter paws opponentPaws from (to:toArr)
+	| isBeatAvailable paws opponentPaws dir sgnFrom numFrom sgnTo numTo =
+		checkBeat dir moveCounter paws opponentPaws to toArr
+	| otherwise = False
+	where
+		sgnFrom = fst (getFieldByCode (read from :: Float))
+		numFrom = snd (getFieldByCode (read from :: Float))
+		sgnTo = fst (getFieldByCode (read to :: Float))
+		numTo = snd (getFieldByCode (read to :: Float))
 
 --wyszukuje zbior ruchow rownowaznych o najwyzszym priorytecie czyli najpierw szuka bic
 --a jak nie ma bic to szuka zywklych ruchow
@@ -175,21 +191,29 @@ orderMove moveCounter blacks whites str = do
 	system "clear"
 	printGame blacks whites
 	putStrLn("move ["++show(moveCounter+1)++"] "++colors!!turn++"s to move")
+	putStrLn("-moving:  a-b")
+	putStrLn("-beating: axb")
 	putStrLn(str)
 	move <- getLine
 	if (length (splitOn "-" move) /= 2)
-		then orderMove moveCounter blacks whites "wrong input"
+		then --orderMove moveCounter blacks whites "wrong input"
+			if (length (splitOn "x" move) <= 1)
+				then orderMove moveCounter blacks whites "wrong input"
+				else
+					if turn == 0
+						then whitesBeat moveCounter blacks whites (splitOn "x" move)
+						else blacksBeat moveCounter blacks whites (splitOn "x" move)
 		else 
 			if turn == 0
-			then whitesMove moveCounter blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1) --makeMove moveCounter 0 blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
-			else blacksMove moveCounter blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
+				then whitesMove moveCounter blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1) --makeMove moveCounter 0 blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
+				else blacksMove moveCounter blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
 	where 
 		turn = (moveCounter `mod` 2)
 
 blacksMove moveCounter blacks whites from to = do
-	if (movePaw blacks whites sgnFrom numFrom sgnTo numTo) == []
+	if not (isMoveAvailable (blacks++whites) UP sgnFrom numFrom sgnTo numTo) || (movePaw blacks whites sgnFrom numFrom sgnTo numTo) == []
 		then orderMove moveCounter blacks whites "*could not make that move"
-		else orderMove (moveCounter+1) blacks (movePaw blacks whites sgnFrom numFrom sgnTo numTo) 
+		else orderMove (moveCounter+1) (movePaw blacks whites sgnFrom numFrom sgnTo numTo) whites
 				("blacks moved from ("++[sgnFrom]++","++(show numFrom)++") to ("++[sgnTo]++","++(show numTo)++")")
 	orderMove (moveCounter+1) blacks whites ""
 	where
@@ -198,12 +222,51 @@ blacksMove moveCounter blacks whites from to = do
 		sgnTo = fst (getFieldByCode (read to :: Float))
 		numTo = snd (getFieldByCode (read to :: Float))
 
+blacksBeat moveCounter blacks whites (a:arr) = do
+	if not (checkBeat UP moveCounter blacks whites a arr)
+		then orderMove moveCounter blacks whites "*could not make that beat"
+		else blacksBeat' moveCounter blacks whites a arr ""
+
+blacksBeat' moveCounter blacks whites from [] str = do
+	orderMove (moveCounter+1) blacks whites str
+blacksBeat' moveCounter blacks whites from (to:toArr) str = do
+	blacksBeat' moveCounter 
+		(movePaw blacks whites sgnFrom numFrom sgnTo numTo)
+		(removePaw whites (chr (floor((fromIntegral (ord(sgnTo)+ord(sgnFrom)))/2))) (floor((fromIntegral (numFrom+numTo))/2)))
+		to toArr
+		(str++"blacks beat from ("++[sgnFrom]++","++(show numFrom)++") to ("++[sgnTo]++","++(show numTo)++")\n")
+	where
+		sgnFrom = fst (getFieldByCode (read from :: Float))
+		numFrom = snd (getFieldByCode (read from :: Float))
+		sgnTo = fst (getFieldByCode (read to :: Float))
+		numTo = snd (getFieldByCode (read to :: Float))
+
+---------------------------------------------------------------------
+
 whitesMove moveCounter blacks whites from to = do
-	if (movePaw whites blacks sgnFrom numFrom sgnTo numTo) == []
+	if not (isMoveAvailable (blacks++whites) DOWN sgnFrom numFrom sgnTo numTo) || ((movePaw whites blacks sgnFrom numFrom sgnTo numTo) == [])
 		then orderMove moveCounter blacks whites "*could not make that move"
 		else orderMove (moveCounter+1) blacks (movePaw whites blacks sgnFrom numFrom sgnTo numTo) 
 				("whites moved from ("++[sgnFrom]++","++(show numFrom)++") to ("++[sgnTo]++","++(show numTo)++")")
 	orderMove (moveCounter+1) blacks whites ""
+	where
+		sgnFrom = fst (getFieldByCode (read from :: Float))
+		numFrom = snd (getFieldByCode (read from :: Float))
+		sgnTo = fst (getFieldByCode (read to :: Float))
+		numTo = snd (getFieldByCode (read to :: Float))
+
+whitesBeat moveCounter blacks whites (a:arr) = do
+	if not (checkBeat DOWN moveCounter whites blacks a arr)
+		then orderMove moveCounter blacks whites "*could not make that beat"
+		else whitesBeat' moveCounter blacks whites a arr ""
+
+whitesBeat' moveCounter blacks whites from [] str = do
+	orderMove (moveCounter+1) blacks whites str
+whitesBeat' moveCounter blacks whites from (to:toArr) str = do
+	whitesBeat' moveCounter 
+		(removePaw blacks (chr (floor((fromIntegral (ord(sgnTo)+ord(sgnFrom)))/2))) (floor((fromIntegral (numFrom+numTo))/2)))
+		(movePaw whites blacks sgnFrom numFrom sgnTo numTo) to toArr
+		(str++"whites beat from ("++[sgnFrom]++","++(show numFrom)++") to ("++[sgnTo]++","++(show numTo)++")\n")
 	where
 		sgnFrom = fst (getFieldByCode (read from :: Float))
 		numFrom = snd (getFieldByCode (read from :: Float))
@@ -216,5 +279,8 @@ gameStart = do
 	printGame blacks whites
 	orderMove 0 blacks whites ""
 		where
-			whites = ((zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3]))
-			blacks = ((zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))
+			whites = (('f',5):(zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3]))
+				--((zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3]))
+			blacks = removePaw ((('c',4):(zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))) 'f' 7
+				--((zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))
+
