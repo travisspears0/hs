@@ -1,15 +1,23 @@
+module Warcaby where
+
 import Data.Char
 import Data.List.Split
 import System.Random
 import System.Process
+import Ai
+import Helping
 
 rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
 
+w:: [(Char,Int)]
+b:: [(Char,Int)]
+ww:: [(Char,Int)]
+bb:: [(Char,Int)]
 w = (zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3])
 b = (zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6])
 
 ww = (('f',5):(zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3]))
-bb = removePaw ((('c',4):(zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))) 'f' 7
+bb = removePaw (removePaw ((('c',4):('g',4):(zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))) 'f' 7) 'g' 6
 
 getFieldByCode n = getFieldByCode' (ceiling(n)*2 - ((ceiling(n/4)-1) `mod` 2))
 getFieldByCode' n
@@ -17,9 +25,9 @@ getFieldByCode' n
 	| otherwise = (chr(ord 'a'-1+m),floor(fromIntegral(n)/8)+1)
 	where m = n `mod` 8
 
-getGameValue blacks whites color
-	| color == 'b' = (length blacks) - (length whites)
-	| color == 'w' = (length whites) - (length blacks)
+oppositeDirection dir
+	| dir == UP = DOWN
+	| otherwise = UP
 
 indexOfPaw paws sgn num = indexOfPaw' paws sgn num 0
 indexOfPaw' paws sgn num index
@@ -67,6 +75,27 @@ test 0 = []
 test n
 	| n == 4 = (chr(ord('a')+n),n):(test (n-1))
 	| otherwise = (chr(ord('a')+n),n):(test (n-1))
+
+canPawBeat paws opponentPaws dir currSgn currNum
+	| not (canPawMove (paws++opponentPaws) dir currSgn currNum 2) = False
+	| dir==UP && (chr ((ord currSgn)+2))<='h' && (currNum-2)>=1 &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)+1)) (currNum-1) = True
+	| dir==UP && (chr ((ord currSgn)-2))>='a' && (currNum-2)>=1 &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)-1)) (currNum-1) = True
+	| dir==DOWN && (chr ((ord currSgn)+2))<='h' && (currNum+2)<=8 &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)+1)) (currNum+1) = True
+	| dir==DOWN && (chr ((ord currSgn)-2))>='a' && (currNum+2)<=8 &&
+		isFieldBusy opponentPaws (chr ((ord currSgn)-1)) (currNum+1) = True
+	| otherwise = False
+
+getPawsBeats paws opponentPaws dir = getPawsBeats' paws opponentPaws dir [] paws
+getPawsBeats' paws opponentPaws dir list [] = list
+getPawsBeats' paws opponentPaws dir list (p:pawsCpy)
+	| canPawBeat paws opponentPaws dir sgn num = getPawsBeats' paws opponentPaws dir (p:list) pawsCpy
+	| otherwise = getPawsBeats' paws opponentPaws dir list pawsCpy
+	where
+		sgn = fst p
+		num = snd p
 
 --zwaraca krotke (ilosc_skokow,[(x1,n1),(x2,n2),...]) z lista ruchow wykrywajac od razu najdluzsza sekwencje czyli
 --najwieksza ilosc bic
@@ -137,21 +166,19 @@ isBeatAvailable paws opponentPaws dir currSgn currNum destSgn destNum
 		isFieldBusy opponentPaws (chr ((ord currSgn)-1)) (currNum+1) = True
 	| otherwise = False
 
-getPawsMoves paws opponentPaws dir = getPawsMoves' paws opponentPaws dir 0 []
-getPawsMoves' paws opponentPaws dir currIndex list
-	| currIndex >= length paws = list
-	| canPawMove (paws++opponentPaws) dir sgn num 1 = getPawsMoves' paws opponentPaws dir (currIndex+1) (currIndex:list)
-	| otherwise = getPawsMoves' paws opponentPaws dir (currIndex+1) list
+getPawsMoves paws opponentPaws dir = getPawsMoves' paws opponentPaws dir [] paws
+getPawsMoves' paws opponentPaws dir list [] = list
+getPawsMoves' paws opponentPaws dir list (p:pawsCpy)
+	| canPawMove (paws++opponentPaws) dir sgn num 1 = getPawsMoves' paws opponentPaws dir (p:list) pawsCpy
+	| otherwise = getPawsMoves' paws opponentPaws dir list pawsCpy
 	where
-		sgn = fst (paws!!currIndex)
-		num = snd (paws!!currIndex)
+		sgn = fst p
+		num = snd p
 
-
-
-checkBeat dir moveCounter paws opponentPaws from [] = True
-checkBeat dir moveCounter paws opponentPaws from (to:toArr)
+checkBeat dir paws opponentPaws from [] = True
+checkBeat dir paws opponentPaws from (to:toArr)
 	| isBeatAvailable paws opponentPaws dir sgnFrom numFrom sgnTo numTo =
-		checkBeat dir moveCounter paws opponentPaws to toArr
+		checkBeat dir paws opponentPaws to toArr
 	| otherwise = False
 	where
 		sgnFrom = fst (getFieldByCode (read from :: Float))
@@ -163,18 +190,84 @@ checkBeat dir moveCounter paws opponentPaws from (to:toArr)
 --a jak nie ma bic to szuka zywklych ruchow
 {-}
 aiMakeMove paws opponentPaws dir moveNumber
-	| length b > 0 = aiBeat paws opponentPaws 
-	| otherwise = 0
+	| fst beatchosen /= '0' = aiBeat paws opponentPaws (fst beatchosen) (snd beatchosen)
+	| otherwise = aiMove paws opponentPaws '0' 0
 	where
-		b = getPawsBeats paws opponentPaws dir
 		m = getPawsMoves paws opponentPaws dir
+		beatchosen = aiChooseBeat paws opponentPaws dir
 -}
 getRandomElement list n = list!!(rnd n 0 (length list - 1))
 --x = RandomRIO (1,10)
 
-aiBeat paws opponentPaws sgn num = 0
-aiMove = 0
-x=movePaw w b 'f' 3 'f' 5
+--liczy roznice miedzy iloscia mozliwych bic dla gracza i przeciwnika
+getGameValue paws opponentPaws dir = 
+	(length $getPawsBeats paws opponentPaws dir)-(length $getPawsBeats opponentPaws paws (oppositeDirection dir))
+
+
+--wybiera najlepsze bicie
+aiChooseBeat paws opponentPaws dir
+	| length pb == 0 = ('0',0)
+	| otherwise = aiChooseBeat' paws opponentPaws dir (init pb) (last pb)
+	where pb = getPawsBeats paws opponentPaws dir
+aiChooseBeat' paws opponentPaws dir [] currentMax = currentMax
+aiChooseBeat' paws opponentPaws dir (b:beats) currentMax
+	| getPawBeats paws opponentPaws dir sgnCM numCM < getPawBeats paws opponentPaws dir sgnB numB = 
+		aiChooseBeat' paws opponentPaws dir beats b
+	| otherwise = aiChooseBeat' paws opponentPaws dir beats currentMax
+	where
+		sgnCM = fst currentMax
+		numCM = snd currentMax
+		sgnB = fst b
+		numB = snd b
+
+getRightMove sgn num dir
+	| dir==UP && c<='h' && (num-1)>=1=(c,(num-1))
+	| dir==DOWN && c<='h' && (num+1)<=8=(c,(num+1))
+	| otherwise = ('0',0)
+	where
+		c = (chr ((ord sgn)+1))
+
+getLeftMove sgn num dir
+	| dir==UP && c>='a' && (num-1)>=1=(c,(num-1))
+	| dir==DOWN && c>='a' && (num+1)<=8=(c,(num+1))
+	| otherwise = ('0',0)
+	where
+		c = (chr ((ord sgn)-1))
+
+--zwraca krotke z najlepszy miejscem na ruch dla danych sgn num
+getPawMove paws opponentPaws sgn num dir
+	| l==('0',0) && r==('0',0) = ('0',0)
+	| l==('0',0) = r
+	| r==('0',0) = l
+	| getGameValue (movePaw paws opponentPaws sgn num (fst l) (snd l)) opponentPaws dir > 
+			getGameValue (movePaw paws opponentPaws sgn num (fst r) (snd r)) opponentPaws dir = l
+	| otherwise = r
+	where
+		l = getLeftMove sgn num dir
+		r = getRightMove sgn num dir
+
+--wybiera najlepszy ruch a jak jest pare mozliwych to losuje
+aiChooseMove paws opponentPaws dir movesCounter
+	| length pm == 0 = ('0',0)
+	| otherwise = getRandomElement (aiChooseMove' paws opponentPaws dir pm 0 []) movesCounter
+	where pm = getPawsMoves paws opponentPaws dir
+aiChooseMove' paws opponentPaws dir [] currVal list = list
+aiChooseMove' paws opponentPaws dir (m:moves) currVal list
+	| getGameValue (movePaw paws opponentPaws currSgn currNum destSgn destNum) opponentPaws dir > currVal =
+		aiChooseMove' paws opponentPaws dir moves (getGameValue (movePaw paws opponentPaws currSgn currNum destSgn destNum) opponentPaws dir) [m]
+	| getGameValue (movePaw paws opponentPaws currSgn currNum destSgn destNum) opponentPaws dir == currVal = 
+		aiChooseMove' paws opponentPaws dir moves currVal (m:list)
+	| otherwise = aiChooseMove' paws opponentPaws dir moves currVal list
+	where
+		currSgn = fst m
+		currNum = snd m
+		destSgn = fst (getPawMove paws opponentPaws (fst m) (snd m) dir)
+		destNum = snd (getPawMove paws opponentPaws (fst m) (snd m) dir)
+
+aiBeat paws opponentPaws sgn num = "beating"
+aiMove paws opponentPaws sgn num = "moving"
+
+
 {-}
 ww = movePaw (movePaw w b 'f' 3 'f' 5) b 'c' 2 'f' 3
 bb = movePaw (movePaw b w 'e' 6 'e' 4) w 'b' 7 'e' 6
@@ -186,6 +279,8 @@ die str f = do
 	f
 
 colors = ["white","black"]
+
+---------------------------------------------------------------------
 
 orderMove moveCounter blacks whites str = do
 	system "clear"
@@ -209,6 +304,14 @@ orderMove moveCounter blacks whites str = do
 				else blacksMove moveCounter blacks whites ((splitOn "-" move)!!0) ((splitOn "-" move)!!1)
 	where 
 		turn = (moveCounter `mod` 2)
+{-}
+getMoveFromAi moveCounter blacks whites str = do
+	system "clear"
+	printGame blacks whites
+	putStrLn("press a key to get ai move")
+	c <- getChar
+-}
+---------------------------------------------------------------------
 
 blacksMove moveCounter blacks whites from to = do
 	if not (isMoveAvailable (blacks++whites) UP sgnFrom numFrom sgnTo numTo) || (movePaw blacks whites sgnFrom numFrom sgnTo numTo) == []
@@ -223,7 +326,7 @@ blacksMove moveCounter blacks whites from to = do
 		numTo = snd (getFieldByCode (read to :: Float))
 
 blacksBeat moveCounter blacks whites (a:arr) = do
-	if not (checkBeat UP moveCounter blacks whites a arr)
+	if not (checkBeat UP blacks whites a arr)
 		then orderMove moveCounter blacks whites "*could not make that beat"
 		else blacksBeat' moveCounter blacks whites a arr ""
 
@@ -256,7 +359,7 @@ whitesMove moveCounter blacks whites from to = do
 		numTo = snd (getFieldByCode (read to :: Float))
 
 whitesBeat moveCounter blacks whites (a:arr) = do
-	if not (checkBeat DOWN moveCounter whites blacks a arr)
+	if not (checkBeat DOWN whites blacks a arr)
 		then orderMove moveCounter blacks whites "*could not make that beat"
 		else whitesBeat' moveCounter blacks whites a arr ""
 
@@ -273,7 +376,9 @@ whitesBeat' moveCounter blacks whites from (to:toArr) str = do
 		sgnTo = fst (getFieldByCode (read to :: Float))
 		numTo = snd (getFieldByCode (read to :: Float))
 
-gameStart = do
+---------------------------------------------------------------------
+
+manVsMan = do
 	system "clear"
 	putStrLn("game started")
 	printGame blacks whites
@@ -283,4 +388,19 @@ gameStart = do
 				--((zip (take 8 ['a'..]) $take 8 $cycle [2,1])++(zip(take 4 ['b','d','f','h']) $take 4 $cycle [3]))
 			blacks = removePaw ((('c',4):(zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))) 'f' 7
 				--((zip (take 8 ['a'..]) $take 8 $cycle [8,7])++(zip(take 4 ['a','c','e','g']) $take 4 $cycle [6]))
+
+manVsAi = do 
+	putStrLn("...")
+
+
+aiVsMan = do 
+	putStrLn("...")
+
+gameStart = do
+	putStrLn("welcome!\nchoose game:\n[1] man vs man\n[2] man vs ai\n[3] ai vs man")
+	game <- getChar
+	if game == '1' then manVsMan else
+		if game == '2' then manVsAi else
+			if game == '3' then aiVsMan else
+				gameStart
 
