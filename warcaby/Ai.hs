@@ -49,7 +49,7 @@ aiChooseBeat' paws opponentPaws dir (b:beats) currentMax list
 --wybiera najlepszy ruch a jak jest pare mozliwych to losuje
 aiChooseMove paws opponentPaws dir movesCounter
 	| length pm == 0 = ('0',0)
-	| otherwise = getRandomElement (aiChooseMove' paws opponentPaws dir pm 0 []) movesCounter
+	| otherwise = getRandomElement (aiChooseMove' paws opponentPaws dir pm (minBound::Int) []) movesCounter
 	where pm = getPawsMoves paws opponentPaws dir
 aiChooseMove' paws opponentPaws dir [] currVal list = list
 aiChooseMove' paws opponentPaws dir (m:moves) currVal list

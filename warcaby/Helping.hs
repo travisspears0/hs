@@ -7,7 +7,9 @@ import System.Process
 
 --te funkcje powinny zwracac losowe wartosci ale cos im chyba nie bardzo wychodzi, nie dokonca wiem czemu :/
 rnd n _min _max = fst (randomR (_min,_max) (mkStdGen n))
-getRandomElement list n = list!!(rnd n 0 (length list - 1))
+getRandomElement list n
+	| length list == 0 = error "no list"
+	| otherwise = list!!(rnd n 0 (length list - 1))
 
 --dane a propo planszy sa zapisywane w 2 tablicach, ktore reprezentuja polozenie pionkow np [('a',1)...]
 --testowe plansze
@@ -51,7 +53,7 @@ isFieldBusy (p:paws) sgn num
 --rusza pionkiem
 movePaw paws opponentPaws currSgn currNum destSgn destNum
 	| 	isFieldBusy (paws++opponentPaws) destSgn destNum == True || --Nothing--error --error "field is busy"
-		indexOfPaw paws currSgn currNum == -1 = []
+		indexOfPaw paws currSgn currNum == -1 || destNum>8 || destNum<1 || destSgn<'a'||destSgn>'h' = []
 	| otherwise = movePaw' paws currSgn currNum destSgn destNum
 
 movePaw' [] currSgn currNum destSgn destNum = []
@@ -199,8 +201,10 @@ checkBeat dir paws opponentPaws from (to:toArr)
 		numTo = snd (getFieldByCode (read to :: Float))
 
 --liczy roznice miedzy iloscia mozliwych bic dla gracza i przeciwnika
-getGameValue paws opponentPaws dir = 
-	(length $getPawsBeats paws opponentPaws dir)-(length $getPawsBeats opponentPaws paws (oppositeDirection dir))
+getGameValue paws opponentPaws dir
+	| length paws == 0 = minBound :: Int
+	| length opponentPaws == 0 = maxBound :: Int
+	| otherwise = (length $getPawsBeats paws opponentPaws dir)-(length $getPawsBeats opponentPaws paws (oppositeDirection dir))
 
 --sprawdza ruch na prawo
 getRightMove sgn num dir
@@ -223,6 +227,7 @@ getPawMove paws opponentPaws sgn num dir
 	| l==('0',0) && r==('0',0) = ('0',0)
 	| l==('0',0) = r
 	| r==('0',0) = l
+	| movePaw paws opponentPaws sgn num (fst l) (snd l) ==[] || movePaw paws opponentPaws sgn num (fst r) (snd r)==[]=('0',0)
 	| getGameValue (movePaw paws opponentPaws sgn num (fst l) (snd l)) opponentPaws dir > 
 			getGameValue (movePaw paws opponentPaws sgn num (fst r) (snd r)) opponentPaws dir = l
 	| otherwise = r
